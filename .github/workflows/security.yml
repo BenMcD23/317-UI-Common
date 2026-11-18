@@ -1,0 +1,40 @@
+# Dependency vulnerability scan, weekly as well as on pull requests: advisories
+# are published against code that hasn't changed.
+#
+# Unlike the apps, nothing here blocks. The package ships no dependencies of
+# its own: React, Radix and the rest are peer dependencies the apps install
+# and audit in their own Security workflows. What's installed here is only
+# this repo's test and formatting tooling, so it's reported, not gated.
+# Fixes arrive as Dependabot security PRs, which ignore the quarterly schedule.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Audit what the package ships (nothing, unless it gains dependencies)
+        # If one is ever added, it reaches both apps: audit it as they do.
+        run: |
+          node -e 'const d = require("./package.json").dependencies; if (d && Object.keys(d).length) { console.error("dependencies:", d); process.exit(1) }' \
+            || npm audit --omit=dev --audit-level=high
+
+      - name: Audit dev dependencies (report only)
+        continue-on-error: true
+        run: npm audit --audit-level=high
