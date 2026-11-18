@@ -1,0 +1,51 @@
+# Pushing a tag vX.Y.Z publishes that version: the packed package becomes an
+# asset on a GitHub release, and the apps depend on that file's URL. A release
+# asset never changes once uploaded, unlike GitHub's source archives, whose
+# checksums have shifted before and would break `npm ci`. The repo is public,
+# so the apps' Docker builds, Vercel and CI download it with no token and no git.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tag matches package.json
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME but package.json says $version. Bump the version, merge, then tag."
+            exit 1
+          fi
+
+      - name: Typecheck and test
+        run: npm run typecheck && npm test
+
+      - name: Pack
+        id: pack
+        run: echo "file=$(npm pack --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.pack.outputs.file }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$FILE" \
+            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag
+          echo "Apps install it from:"
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$FILE"

@@ -1,0 +1,4 @@
+node_modules
+package-lock.json
+# shadcn files keep the style shadcn generates, as in both apps.
+src/components/ui
