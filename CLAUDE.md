@@ -39,6 +39,9 @@ can't see how an app uses a component.
 ## Branches and pull requests
 
 - Branch off `main` and open a pull request into it. CI (`check`) must pass.
+  Dependabot's minor and patch updates merge themselves once it does; majors
+  are merged by hand. The Security workflow only reports: the package ships
+  no dependencies, the apps audit the peer ones.
   Changes under `.github/` need @BenMcD23's review (`.github/CODEOWNERS`).
 - Releases are tags on `main` (`vX.Y.Z`, matching `package.json`); the Release
   workflow refuses a tag that doesn't match.
